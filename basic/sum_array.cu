@@ -139,8 +139,9 @@ int main() {
     CHECK_CUDA_ERROR(cudaStreamSynchronize(stream));
 
     for (int block_dim = 64; block_dim <= 512; block_dim *= 2) {
+        int grid_dim = (size + block_dim - 1) / block_dim;
         std::function<void(cudaStream_t)> bound_function_sum_array{
-                std::bind(launch_sum_array, d_a, d_b, d_c, d_s, size, 1, block_dim, stream)};
+                std::bind(launch_sum_array, d_a, d_b, d_c, d_s, size, grid_dim, block_dim, stream)};
 
         float const latency_gpu{measure_performance(bound_function_sum_array, stream)};
         std::cout << "Latency for sum array on GPU, block_dim " << block_dim << ": " << latency_gpu << std::endl;

@@ -311,6 +311,7 @@ include_directories(${COMMON_HEADER_DIRS})
 include_directories(SYSTEM ${TORCH_INCLUDE_DIRS} ${TRT_INCLUDE_DIR})
 
 add_subdirectory(basic)
+add_subdirectory(parallel_reduction)
 
 # Measure the compile time
 option(MEASURE_BUILD_TIME "Measure the build time of each module" OFF)
