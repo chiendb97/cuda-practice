@@ -169,7 +169,7 @@ int main(int argc, char **argv) {
             std::bind(launch_reduce_warp_unrolling, d_a, d_s, size, grid_dim, block_dim, stream)};
 
     float const latency_gpu{measure_performance(bound_function_reduce_warp_unrolling, stream, 1, 0)};
-    std::cout << "Latency for sum array neighbored on GPU, block_dim " << block_dim << ": " << latency_gpu << std::endl;
+    std::cout << "Latency for sum array on GPU, block_dim " << block_dim << ": " << latency_gpu << std::endl;
     CHECK_CUDA_ERROR(cudaMemcpyAsync(h_s, d_s, grid_dim * sizeof(int), cudaMemcpyDeviceToHost, stream));
     CHECK_CUDA_ERROR(cudaStreamSynchronize(stream));
     bool success = check_result(h_s, sum, grid_dim);

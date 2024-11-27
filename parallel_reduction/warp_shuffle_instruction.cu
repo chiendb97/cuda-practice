@@ -1,5 +1,5 @@
 //
-// Created by chiendb on 4/21/24.
+// Created by chiendb on 11/27/24.
 //
 
 #include <iostream>
@@ -29,7 +29,7 @@ void check_last_cuda_error(const char *const file, const int line) {
     }
 }
 
-void sum_array_cpu(int *a, int &sum, int size) {
+void reduce_cpu(int *a, int &sum, int size) {
     for (int i = 0; i < size; ++i) {
         sum += a[i];
     }
@@ -62,32 +62,61 @@ float measure_performance(std::function<T(cudaStream_t)> bound_function,
     CHECK_CUDA_ERROR(cudaEventDestroy(start));
     CHECK_CUDA_ERROR(cudaEventDestroy(stop));
 
-    float const latency{time / num_repeats};
+    float const latency{time / 1000 / num_repeats};
 
     return latency;
 }
 
+__inline__ __device__ int warp_reduce(int sum) {
+    sum += __shfl_xor_sync(0xFFFFFFFF, sum, 16);
+    sum += __shfl_xor_sync(0xFFFFFFFF, sum, 8);
+    sum += __shfl_xor_sync(0xFFFFFFFF, sum, 4);
+    sum += __shfl_xor_sync(0xFFFFFFFF, sum, 2);
+    sum += __shfl_xor_sync(0xFFFFFFFF, sum, 1);
+    return sum;
+}
+
 __global__
-void sum_array(int *a, int size) {
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
-    if (idx >= size) {
+void reduce_warp_shuffle_instruction(int *a, int *s, int size) {
+    extern __shared__ int smem[];
+    auto gid = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (gid >= size) {
         return;
     }
-    for (int offset = 1; offset < blockDim.x; offset *= 2) {
-        if (threadIdx.x % (offset * 2) == 0) {
-            a[idx] += a[idx + offset];
-        }
-        __syncthreads();
+
+    auto sum = a[gid];
+
+    auto land_idx = threadIdx.x % 32;
+    auto warp_idx = threadIdx.x / 32;
+
+    sum = warp_reduce(sum);
+
+    if (land_idx == 0) {
+        smem[warp_idx] = sum;
+    }
+
+    __syncthreads();
+
+    sum = threadIdx.x < 32 ? smem[threadIdx.x] : 0;
+
+    if (warp_idx == 0) {
+        sum = warp_reduce(sum);
+    }
+
+    if (threadIdx.x == 0) {
+        s[blockIdx.x] = sum;
     }
 }
 
-void launch_sum_array(int *a, int size, int grid_dim, int block_dim, cudaStream_t stream) {
-    sum_array<<<grid_dim, block_dim, 0, stream>>>(a, size);
+void launch_reduce_warp_shuffle_instruction(int *a, int *s, int size, int grid_dim, int block_dim, cudaStream_t stream) {
+    reduce_warp_shuffle_instruction<<<grid_dim, block_dim, block_dim / 32 * sizeof(int), stream>>>(a, s, size);
 }
 
-bool check_result(int *h_s, const int target, int block_dim, int size) {
+
+bool check_result(int *h_s, const int target, int grid_dim) {
     int output = 0;
-    for (int i = 0; i < size; i += block_dim) {
+    for (int i = 0; i < grid_dim; ++i) {
         output += h_s[i];
     }
     if (output != target) {
@@ -96,16 +125,19 @@ bool check_result(int *h_s, const int target, int block_dim, int size) {
     return output == target;
 }
 
-int main() {
-    int size = 1 << 22;
+int main(int argc, char **argv) {
+    int size = 1 << 24;
     int *h_a, *h_s, sum = 0;
-    int *d_a;
+    int *d_a, *d_s;
+
+    int block_dim = std::stoi(argv[1]);
+    int grid_dim = (size + block_dim - 1) / block_dim;
 
     cudaStream_t stream;
     CHECK_CUDA_ERROR(cudaStreamCreate(&stream));
 
     h_a = (int *) malloc(size * sizeof(int));
-    h_s = (int *) malloc(size * sizeof(int));
+    h_s = (int *) malloc(grid_dim * sizeof(int));
 
     // Random number generator
     std::random_device rd;  // Obtain a random number from hardware
@@ -118,7 +150,7 @@ int main() {
     }
 
     std::clock_t time_start = std::clock();
-    sum_array_cpu(h_a, sum, size);
+    reduce_cpu(h_a, sum, size);
     std::clock_t time_end = std::clock();
 
     double latency_cpu = (double) (time_end - time_start) / CLOCKS_PER_SEC;
@@ -127,29 +159,28 @@ int main() {
     cudaSetDevice(0);
 
     CHECK_CUDA_ERROR(cudaMalloc((void **) &d_a, size * sizeof(int)));
+    CHECK_CUDA_ERROR(cudaMalloc((void **) &d_s, grid_dim * sizeof(int)));
+    CHECK_CUDA_ERROR(cudaMemcpyAsync(d_a, h_a, size * sizeof(int), cudaMemcpyHostToDevice, stream));
+    CHECK_CUDA_ERROR(cudaMemset(d_s, 0, grid_dim * sizeof(int)));
+    CHECK_CUDA_ERROR(cudaStreamSynchronize(stream));
+    std::function<void(cudaStream_t)> bound_function_reduce_warp_shuffle_instruction{
+            std::bind(launch_reduce_warp_shuffle_instruction, d_a, d_s, size, grid_dim, block_dim, stream)};
 
-    for (int block_dim = 64; block_dim <= 512; block_dim *= 2) {
-        CHECK_CUDA_ERROR(cudaMemcpyAsync(d_a, h_a, size * sizeof(int), cudaMemcpyHostToDevice, stream));
-        CHECK_CUDA_ERROR(cudaStreamSynchronize(stream));
-        int grid_dim = size / block_dim;
-        std::function<void(cudaStream_t)> bound_function_sum_array{
-                std::bind(launch_sum_array, d_a, size, grid_dim, block_dim, stream)};
-
-        float const latency_gpu{measure_performance(bound_function_sum_array, stream, 1, 0)};
-        std::cout << "Latency for sum array on GPU, block_dim " << block_dim << ": " << latency_gpu << std::endl;
-        CHECK_CUDA_ERROR(cudaMemcpyAsync(h_s, d_a, size * sizeof(int), cudaMemcpyDeviceToHost, stream));
-        CHECK_CUDA_ERROR(cudaStreamSynchronize(stream));
-        bool success = check_result(h_s, sum, block_dim, size);
-        if (success) {
-            std::cout << "Result is correct\n";
-        } else {
-            std::cout << "Result is incorrect\n";
-        }
+    float const latency_gpu{measure_performance(bound_function_reduce_warp_shuffle_instruction, stream, 1, 0)};
+    std::cout << "Latency for sum array on GPU, block_dim " << block_dim << ": " << latency_gpu << std::endl;
+    CHECK_CUDA_ERROR(cudaMemcpyAsync(h_s, d_s, grid_dim * sizeof(int), cudaMemcpyDeviceToHost, stream));
+    CHECK_CUDA_ERROR(cudaStreamSynchronize(stream));
+    bool success = check_result(h_s, sum, grid_dim);
+    if (success) {
+        std::cout << "Result is correct\n";
+    } else {
+        std::cout << "Result is incorrect\n";
     }
 
     CHECK_CUDA_ERROR(cudaStreamDestroy(stream));
     free(h_a);
     free(h_s);
     CHECK_CUDA_ERROR(cudaFree(d_a));
+    CHECK_CUDA_ERROR(cudaFree(d_s));
     return 0;
 }

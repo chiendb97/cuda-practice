@@ -11,8 +11,8 @@ project(cuda_practice LANGUAGES CXX)
 
 # Build options
 option(BUILD_PYT "Build in PyTorch TorchScript class mode" ON)
-option(BUILD_PYBIND "Build Python bindings"
-        ON)
+option(BUILD_PYBIND "Build Python bindings" ON)
+option(DISABLE_L1_CACHE "Disable L1 Cache" OFF)
 
 if(NVTX_DISABLE)
     add_compile_definitions("NVTX_DISABLE")
@@ -183,6 +183,11 @@ if((WIN32))
     endif()
 endif()
 
+if(DISABLE_L1_CACHE)
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas -dlcm=cg")
+    message("CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
+endif()
+
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
 if(FAST_MATH)
@@ -312,6 +317,7 @@ include_directories(SYSTEM ${TORCH_INCLUDE_DIRS} ${TRT_INCLUDE_DIR})
 
 add_subdirectory(basic)
 add_subdirectory(parallel_reduction)
+add_subdirectory(matrix_transpose)
 
 # Measure the compile time
 option(MEASURE_BUILD_TIME "Measure the build time of each module" OFF)
