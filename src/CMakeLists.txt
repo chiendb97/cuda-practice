@@ -1,0 +1,3 @@
+add_subdirectory(basic)
+add_subdirectory(parallel_reduction)
+add_subdirectory(matrix_transpose)
