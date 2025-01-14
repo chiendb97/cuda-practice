@@ -1,0 +1,1 @@
+add_executable(wave_equation wave_equation.cu)
