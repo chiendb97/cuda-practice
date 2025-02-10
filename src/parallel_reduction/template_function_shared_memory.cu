@@ -69,10 +69,11 @@ float measure_performance(std::function<T(cudaStream_t)> bound_function,
 
 template<unsigned int BlockDim>
 __global__
-void reduce_complete_unrolling(int *a, int *s, int size) {
+void reduce_complete_unrolling_shared_memory(int *a, int *s, int size) {
+    __shared__ int idata[BlockDim];
     auto gid = blockDim.x * blockIdx.x * 8 + threadIdx.x;
 
-    auto *idata = a + blockDim.x * blockIdx.x * 8;
+//    auto *idata = a + blockDim.x * blockIdx.x * 8;
 
     if (gid + 7 * blockDim.x < size) {
         int a1 = a[gid];
@@ -85,6 +86,10 @@ void reduce_complete_unrolling(int *a, int *s, int size) {
         int a8 = a[gid + 7 * blockDim.x];
         a[gid] = a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8;
     }
+
+    // __syncthreads();
+
+    idata[threadIdx.x] = a[blockDim.x * blockIdx.x * 8 + threadIdx.x];
 
     __syncthreads();
 
@@ -127,22 +132,22 @@ void reduce_complete_unrolling(int *a, int *s, int size) {
 void launch_reduce_complete_unrolling(int *a, int *s, int size, int grid_dim, int block_dim, cudaStream_t stream) {
     switch (block_dim) {
         case 1024:
-            reduce_complete_unrolling<1024><<<grid_dim, block_dim, 0, stream>>>(a, s, size);
+            reduce_complete_unrolling_shared_memory<1024><<<grid_dim, block_dim, 0, stream>>>(a, s, size);
             break;
         case 512:
-            reduce_complete_unrolling<512><<<grid_dim, block_dim, 0, stream>>>(a, s, size);
+            reduce_complete_unrolling_shared_memory<512><<<grid_dim, block_dim, 0, stream>>>(a, s, size);
             break;
         case 256:
-            reduce_complete_unrolling<256><<<grid_dim, block_dim, 0, stream>>>(a, s, size);
+            reduce_complete_unrolling_shared_memory<256><<<grid_dim, block_dim, 0, stream>>>(a, s, size);
             break;
         case 128:
-            reduce_complete_unrolling<128><<<grid_dim, block_dim, 0, stream>>>(a, s, size);
+            reduce_complete_unrolling_shared_memory<128><<<grid_dim, block_dim, 0, stream>>>(a, s, size);
             break;
         case 64:
-            reduce_complete_unrolling<64><<<grid_dim, block_dim, 0, stream>>>(a, s, size);
+            reduce_complete_unrolling_shared_memory<64><<<grid_dim, block_dim, 0, stream>>>(a, s, size);
             break;
         case 32:
-            reduce_complete_unrolling<32><<<grid_dim, block_dim, 0, stream>>>(a, s, size);
+            reduce_complete_unrolling_shared_memory<32><<<grid_dim, block_dim, 0, stream>>>(a, s, size);
             break;
         default: ;
     }
