@@ -109,8 +109,11 @@ endif()
 set(3RDPARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty)
 message("${3RDPARTY_DIR}")
 include_directories(
-        ${CUDAToolkit_INCLUDE_DIRS} ${CUDNN_ROOT_DIR}/include ${NCCL_INCLUDE_DIR}
-        ${3RDPARTY_DIR}/cutlass/include ${3RDPARTY_DIR}/NVTX/include
+        ${CUDAToolkit_INCLUDE_DIRS}
+        ${CUDNN_ROOT_DIR}/include
+        ${NCCL_INCLUDE_DIR}
+        ${3RDPARTY_DIR}/cutlass/include
+        ${3RDPARTY_DIR}/NVTX/include
         ${3RDPARTY_DIR}/json/include)
 
 # TRT dependencies
