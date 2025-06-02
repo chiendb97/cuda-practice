@@ -1,0 +1,2 @@
+add_executable(vector_addition_baseline baseline.cu)
+add_executable(vector_addition_vectorized_memory_access vectorized_memory_access.cu)

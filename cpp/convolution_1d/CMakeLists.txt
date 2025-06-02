@@ -1,0 +1,2 @@
+add_executable(convolution_1d_baseline baseline.cu)
+target_link_libraries(convolution_1d_baseline gflags)

@@ -1,4 +1,7 @@
-add_subdirectory(basic)
+add_subdirectory(hello_world)
+add_subdirectory(vector_addition)
+add_subdirectory(convolution_1d)
+add_subdirectory(rms_normalization)
 add_subdirectory(parallel_reduction)
 add_subdirectory(matrix_transpose)
 add_subdirectory(matrix_multiplication)

@@ -14,6 +14,18 @@ option(BUILD_PYT "Build in PyTorch TorchScript class mode" ON)
 option(BUILD_PYBIND "Build Python bindings" ON)
 option(DISABLE_L1_CACHE "Disable L1 Cache" OFF)
 
+# Find gflags
+find_package(gflags REQUIRED)
+if(NOT gflags_FOUND)
+    message(FATAL_ERROR "gflags not found. Please ensure it is installed or specify the path.")
+endif()
+
+# Add gflags include directories
+include_directories(${GFLAGS_INCLUDE_DIRS})
+
+# Add gflags compile definitions (if needed)
+add_definitions(${GFLAGS_CFLAGS})
+
 if(NVTX_DISABLE)
     add_compile_definitions("NVTX_DISABLE")
     message(STATUS "NVTX is disabled")
@@ -107,20 +119,12 @@ if(ENABLE_MULTI_DEVICE EQUAL 1)
 endif()
 
 set(3RDPARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty)
-message("${3RDPARTY_DIR}")
 include_directories(
         ${CUDAToolkit_INCLUDE_DIRS}
         ${CUDNN_ROOT_DIR}/include
         ${NCCL_INCLUDE_DIR}
-        ${3RDPARTY_DIR}/cutlass/include
         ${3RDPARTY_DIR}/NVTX/include
         ${3RDPARTY_DIR}/json/include)
-
-# TRT dependencies
-set_ifndef(TRT_LIB_DIR ${CMAKE_BINARY_DIR})
-set_ifndef(TRT_INCLUDE_DIR /usr/include/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu)
-set(TRT_LIB nvinfer)
-find_library_create_target(${TRT_LIB} nvinfer SHARED ${TRT_LIB_DIR})
 
 if(${CUDAToolkit_VERSION} VERSION_GREATER_EQUAL "11")
     add_definitions("-DENABLE_BF16")
@@ -295,30 +299,11 @@ elseif(NOT WIN32)
     message(STATUS "Build without PyTorch, USE_CXX11_ABI=${USE_CXX11_ABI}")
 endif()
 
-file(STRINGS "${TRT_INCLUDE_DIR}/NvInferVersion.h" VERSION_STRINGS
-        REGEX "#define NV_TENSORRT_.*")
-foreach(TYPE MAJOR MINOR PATCH BUILD)
-    string(REGEX MATCH "NV_TENSORRT_${TYPE} [0-9]+" TRT_TYPE_STRING
-            ${VERSION_STRINGS})
-    string(REGEX MATCH "[0-9]+" TRT_${TYPE} ${TRT_TYPE_STRING})
-endforeach(TYPE)
-
-set(TRT_VERSION
-        "${TRT_MAJOR}.${TRT_MINOR}.${TRT_PATCH}"
-        CACHE STRING "TensorRT project version")
-set(TRT_SOVERSION
-        "${TRT_MAJOR}"
-        CACHE STRING "TensorRT library so version")
-message(
-        STATUS
-        "Building for TensorRT version: ${TRT_VERSION}, library version: ${TRT_SOVERSION}"
-)
-
 list(APPEND COMMON_HEADER_DIRS)
 include_directories(${COMMON_HEADER_DIRS})
 include_directories(SYSTEM ${TORCH_INCLUDE_DIRS} ${TRT_INCLUDE_DIR})
 
-add_subdirectory(src)
+add_subdirectory(cpp)
 
 # Measure the compile time
 option(MEASURE_BUILD_TIME "Measure the build time of each module" OFF)
