@@ -1,0 +1,2 @@
+add_executable(average_pooling_1d_baseline baseline.cu)
+target_link_libraries(average_pooling_1d_baseline gflags)

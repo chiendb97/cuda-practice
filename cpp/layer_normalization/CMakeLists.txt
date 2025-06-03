@@ -1,0 +1,2 @@
+add_executable(layer_normalization_baseline baseline.cu)
+target_link_libraries(layer_normalization_baseline gflags)

@@ -3,8 +3,7 @@ ARG BASE_TAG=24.11-py3
 
 FROM ${BASE_IMAGE}:${BASE_TAG} as base
 
-ENV http_proxy=http://10.60.28.99:81
-ENV https_proxy=http://10.60.28.99:81
+# Todo: Add proxy
 
 RUN apt-get update && apt-get install -y --no-install-recommends python-is-python3 rapidjson-dev ccache git-lfs tzdata net-tools
 

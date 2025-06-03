@@ -1,0 +1,2 @@
+add_executable(l2_normalization_baseline baseline.cu)
+target_link_libraries(l2_normalization_baseline gflags)
