@@ -1,0 +1,2 @@
+add_executable(prefix_sum_baseline baseline.cu)
+target_link_libraries(prefix_sum_baseline gflags)
