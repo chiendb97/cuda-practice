@@ -7,8 +7,6 @@
 #include <ctime>
 #include <gflags/gflags.h>
 
-#include <cub/block/block_reduce.cuh>
-
 DEFINE_int32(kernel_size, 7, "kernel_size");
 DEFINE_int32(stride, 3, "stride");
 DEFINE_int32(padding, 2, "padding");
@@ -77,8 +75,8 @@ void average_pooling_1d_cpu(const float *X, float *Y, int kernel_size, int paddi
         float sum = 0;
         for (int m = 0; m < kernel_size; ++m) {
             if (i * stride + m - padding >= 0 && i * stride + m - padding < H) {
+                sum += X[i * stride + m - padding];
             }
-            sum += X[i * stride + m - padding];
         }
 
         Y[i] = sum / kernel_size;
@@ -96,10 +94,10 @@ void average_pooling_1d(const float *__restrict__ X, float *Y, int kernel_size, 
     }
 
     float sum = 0;
-    for (auto m = 0; m < kernel_size; ++m) {
-        if (idx * stride + m - padding >= 0 && idx * stride + m - padding < H) {
-            sum += X[idx * stride + m - padding];
-        }
+    int start = max(idx * stride - padding, 0);
+    int end = min(idx * stride + kernel_size - 1 - padding, H - 1);
+    for (auto i = start; i <= end; ++i) {
+        sum += X[i];
     }
 
     Y[idx] = sum / kernel_size;
