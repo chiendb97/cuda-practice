@@ -1,0 +1,2 @@
+add_executable(prefix_multiple_baseline baseline.cu)
+target_link_libraries(prefix_multiple_baseline gflags)
