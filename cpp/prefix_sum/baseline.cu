@@ -73,9 +73,9 @@ float measure_performance(std::function<T(cudaStream_t)> bound_function,
 }
 
 void prefix_sum_cpu(const float *X, float *Y, size_t n) {
-    Y[0] = 0;
+    Y[0] = X[0];
     for (int i = 1; i < n; ++i) {
-        Y[i] = X[i-1] + Y[i - 1];
+        Y[i] = X[i] + Y[i - 1];
     }
 }
 
@@ -115,9 +115,9 @@ void launch_prefix_sum(const float *d_X, float *d_output, int n,
                        int grid_dim, int block_dim, cudaStream_t stream) {
     void *d_temp_storage = nullptr;
     size_t temp_storage_bytes = 0;
-    cub::DeviceScan::ExclusiveSum(d_temp_storage, temp_storage_bytes, d_X, d_output, n);
+    cub::DeviceScan::InclusiveSum(d_temp_storage, temp_storage_bytes, d_X, d_output, n);
     cudaMalloc(&d_temp_storage, temp_storage_bytes * sizeof(float));
-    cub::DeviceScan::ExclusiveSum(d_temp_storage, temp_storage_bytes, d_X, d_output, n);
+    cub::DeviceScan::InclusiveSum(d_temp_storage, temp_storage_bytes, d_X, d_output, n);
 }
 
 bool check_result(float *output, float *target, size_t n, float eps = 1e-2) {
