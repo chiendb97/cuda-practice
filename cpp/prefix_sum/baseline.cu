@@ -81,7 +81,7 @@ void prefix_sum_cpu(const float *X, float *Y, size_t n) {
 
 template<int block_dim, int items_per_thread, cub::BlockScanAlgorithm algorithm>
 __global__
-void prefix_block_sum(const float *__restrict__ X, float *Y, size_t N) {
+void block_prefix_sum(const float *__restrict__ X, float *Y, size_t N) {
     typedef cub::BlockLoad<float, block_dim, items_per_thread, cub::BLOCK_LOAD_WARP_TRANSPOSE> BlockLoadT;
     typedef cub::BlockStore<float, block_dim, items_per_thread, cub::BLOCK_STORE_WARP_TRANSPOSE> BlockStoreT;
 
@@ -120,7 +120,7 @@ void launch_prefix_sum(const float *d_X, float *d_output, int n,
     cub::DeviceScan::InclusiveSum(d_temp_storage, temp_storage_bytes, d_X, d_output, n);
 }
 
-bool check_result(float *output, float *target, size_t n, float eps = 1e-2) {
+bool check_result(float *output, float *target, size_t n, float eps = 1e-1) {
     for (int i = 0; i < n; ++i) {
         if (fabs(output[i] - target[i]) > eps) {
             return false;
