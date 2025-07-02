@@ -1,0 +1,2 @@
+add_executable(relu_baseline baseline.cu)
+target_link_libraries(relu_baseline gflags)
