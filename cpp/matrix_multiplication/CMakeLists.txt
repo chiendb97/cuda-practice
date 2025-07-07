@@ -15,3 +15,9 @@ target_link_libraries(matrix_multiplication_optimize_3 gflags)
 
 add_executable(matrix_multiplication_optimize_4 optimize/optimize_4.cu)
 target_link_libraries(matrix_multiplication_optimize_4 gflags)
+
+add_executable(matrix_multiplication_optimize_5 optimize/optimize_5.cu)
+target_link_libraries(matrix_multiplication_optimize_5 gflags)
+
+add_executable(matrix_multiplication_optimize_6 optimize/optimize_6.cu)
+target_link_libraries(matrix_multiplication_optimize_6 gflags)

@@ -1,5 +1,5 @@
 //
-// Created by root on 6/25/25.
+// Created by root on 7/6/25.
 //
 
 #include <iostream>
@@ -28,22 +28,17 @@ matrix_multiplication(const uint32_t M, const uint32_t N, const uint32_t K,
                       const float alpha, half *A, half *B, const float beta, half *C, half *D) {
     constexpr uint32_t MMA_M = 16;
     constexpr uint32_t MMA_N = 8;
-    constexpr uint32_t MMA_K = 8;
 
     const uint32_t A_stride = K;
     const uint32_t B_stride = N;
     const uint32_t CD_stride = N;
 
-    constexpr unsigned int SWIZZLE_BITS_A = int_log2(BK / 8);
-    constexpr unsigned int SWIZZLE_BITS_B = int_log2(BN / 8);
-    constexpr unsigned int SWIZZLE_MASK_A = 0b1110000 << SWIZZLE_BITS_A;
-    constexpr unsigned int SWIZZLE_MASK_B = 0b1110000 << SWIZZLE_BITS_B;
+    constexpr uint32_t SWIZZLE_BITS_A = int_log2(BK / 8);
+    constexpr uint32_t SWIZZLE_BITS_B = int_log2(BN / 8);
 
-    const uint32_t mma_tiles_per_warp_m = WM / MMA_M;
-    const uint32_t mma_tiles_per_warp_n = WN / MMA_N;
-    const uint32_t mma_tiles_per_warp_k = WK / MMA_K;
-
-    const uint32_t warp_tiles_per_block_k = BK / WK;
+    constexpr uint32_t mma_tiles_per_warp_m = WM / MMA_M;
+    constexpr uint32_t mma_tiles_per_warp_n = WN / MMA_N;
+    constexpr uint32_t mma_tiles_per_warp_k = 4;
 
     const uint32_t num_block_tiles_k = K / BK;
 
@@ -58,12 +53,19 @@ matrix_multiplication(const uint32_t M, const uint32_t N, const uint32_t K,
     half *A_block_smem = shared_memory;
     half *B_block_smem = &shared_memory[BM * BK];
 
+    constexpr int BUFFER_SIZE = BM * BK + BN * BK;
+    int offset_direction = 1;
+
     uint32_t acc_register[mma_tiles_per_warp_m][mma_tiles_per_warp_n][2];
     uint32_t A_register[mma_tiles_per_warp_m][mma_tiles_per_warp_k][2];
     uint32_t B_register[mma_tiles_per_warp_k][mma_tiles_per_warp_n];
 
     half (&acc_register_)[mma_tiles_per_warp_m][mma_tiles_per_warp_n][4] =
             reinterpret_cast<half(&)[mma_tiles_per_warp_m][mma_tiles_per_warp_n][4]>(acc_register);
+    half (&A_register_)[mma_tiles_per_warp_m][mma_tiles_per_warp_k][4] =
+            reinterpret_cast<half(&)[mma_tiles_per_warp_m][mma_tiles_per_warp_k][4]>(A_register);
+    half (&B_register_)[mma_tiles_per_warp_k][mma_tiles_per_warp_n][2] =
+            reinterpret_cast<half(&)[mma_tiles_per_warp_k][mma_tiles_per_warp_n][2]>(B_register);
 
     for (uint32_t mma_m = 0; mma_m < mma_tiles_per_warp_m; ++mma_m) {
         for (uint32_t mma_n = 0; mma_n < mma_tiles_per_warp_n; ++mma_n) {
@@ -87,7 +89,7 @@ matrix_multiplication(const uint32_t M, const uint32_t N, const uint32_t K,
     half *A_block_gmem = A + block_m * BM * A_stride;
     half *B_block_gmem = B + block_n * BN;
 
-    tiled_mem_cpy_swizzle<BM, BK, NUM_THREADS, 8, SWIZZLE_BITS_A>(reinterpret_cast<float4 *>(A_block_gmem), reinterpret_cast<float4 *>(A_block_smem), A_stride);
+    tiled_mem_cpy_swizzle_a<BM, NUM_THREADS, 8>(reinterpret_cast<float4 *>(A_block_gmem), reinterpret_cast<float4 *>(A_block_smem), A_stride);
     tiled_mem_cpy_swizzle<BK, BN, NUM_THREADS, 8, SWIZZLE_BITS_B>(reinterpret_cast<float4 *>(B_block_gmem), reinterpret_cast<float4 *>(B_block_smem), B_stride);
 
     for (uint32_t block_k = 1; block_k <= num_block_tiles_k; ++block_k) {
@@ -101,78 +103,40 @@ matrix_multiplication(const uint32_t M, const uint32_t N, const uint32_t K,
             tiled_mem_cpy_load<BK, BN, NUM_THREADS, 8, B_reg_size>(reinterpret_cast<float4 *>(B_block_gmem), B_gmem_cache_reg, B_stride);
         }
 
-        for (uint32_t warp_k = 0; warp_k < warp_tiles_per_block_k; ++warp_k) {
-            half *A_warp_smem = A_block_smem + warp_m * WM * BK + warp_k * WK;
-            half *B_warp_smem = B_block_smem + warp_k * WK * BN + warp_n * WN;
+        const half* A_warp_smem = A_block_smem + warp_m * WM * BK;
+        const half* B_warp_smem = B_block_smem + warp_n * WN;
 
-            auto A_warp_tile_byte_offset = cvta_to_shared_u32(A_warp_smem);
-            auto B_warp_tile_byte_offset = cvta_to_shared_u32(B_warp_smem);
+        ldmatrix_a<mma_tiles_per_warp_m, mma_tiles_per_warp_k, BK>(A_warp_smem, A_register_);
+        ldmatrix_b<mma_tiles_per_warp_k, mma_tiles_per_warp_n, BN>(B_warp_smem, B_register_);
 
-            // Load tiles of A to register
-            for (uint32_t mma_m = 0; mma_m < mma_tiles_per_warp_m; ++mma_m) {
-                for (uint32_t mma_k = 0; mma_k < mma_tiles_per_warp_k; ++mma_k) {
-                    const uint32_t mma_tile_byte_offset = (mma_m * MMA_M * BK + mma_k * MMA_K) * sizeof(half);
-                    const uint32_t thread_byte_offset = (threadIdx.x % MMA_M) * BK * sizeof(half);
-
-                    uint32_t thread_offset_bytes =
-                            A_warp_tile_byte_offset + mma_tile_byte_offset + thread_byte_offset;
-
-                    thread_offset_bytes = thread_offset_bytes ^ ((thread_offset_bytes & SWIZZLE_MASK_A) >> SWIZZLE_BITS_A);
-
+        // Outer product between mma tiles
+        #pragma unroll
+        for (uint32_t mma_k = 0; mma_k < mma_tiles_per_warp_k; ++mma_k) {
+            #pragma unroll
+            for (uint32_t mma_n = 0; mma_n < mma_tiles_per_warp_n; ++mma_n) {
+                #pragma unroll
+                for (uint32_t mma_m = 0; mma_m < mma_tiles_per_warp_m; ++mma_m) {
                     asm volatile (
-                        "ldmatrix.sync.aligned.m8n8.x2.shared.b16 "
-                        "{%0, %1}, [%2];"
-                        : "=r"(A_register[mma_m][mma_k][0]), "=r"(A_register[mma_m][mma_k][1])
-                        : "r"(thread_offset_bytes)
+                        "mma.sync.aligned.m16n8k8.row.col.f16.f16.f16.f16 "
+                        "{%0, %1}, "
+                        "{%2, %3}, "
+                        "{%4}, "
+                        "{%5, %6};"
+                        : "=r"(acc_register[mma_m][mma_n][0]), "=r"(acc_register[mma_m][mma_n][1])
+                        : "r"(A_register[mma_m][mma_k][0]), "r"(A_register[mma_m][mma_k][1]),
+                        "r"(B_register[mma_k][mma_n]),
+                        "r"(acc_register[mma_m][mma_n][0]), "r"(acc_register[mma_m][mma_n][1])
                     );
-                }
-            }
-
-            // Load tiles of B to register
-            for (uint32_t mma_k = 0; mma_k < mma_tiles_per_warp_k; ++mma_k) {
-                for (uint32_t mma_n = 0; mma_n < mma_tiles_per_warp_n; ++mma_n) {
-                    const uint32_t mma_tile_byte_offset = (mma_k * MMA_K * BN + mma_n * MMA_N) * sizeof(half);
-                    const uint32_t thread_byte_offset = (threadIdx.x % MMA_K) * BN * sizeof(half);
-
-                    uint32_t thread_offset_bytes =
-                            B_warp_tile_byte_offset + mma_tile_byte_offset + thread_byte_offset;
-
-                    thread_offset_bytes = thread_offset_bytes ^ ((thread_offset_bytes & SWIZZLE_MASK_B) >> SWIZZLE_BITS_B);
-
-                    asm volatile (
-                        "ldmatrix.sync.aligned.m8n8.x1.trans.shared.b16 "
-                        "{%0}, [%1];"
-                        : "=r"(B_register[mma_k][mma_n])
-                        : "r"(thread_offset_bytes)
-                    );
-                }
-            }
-
-            // Outer product between mma tiles
-
-            for (uint32_t mma_k = 0; mma_k < mma_tiles_per_warp_k; ++mma_k) {
-                for (uint32_t mma_n = 0; mma_n < mma_tiles_per_warp_n; ++mma_n) {
-                    for (uint32_t mma_m = 0; mma_m < mma_tiles_per_warp_m; ++mma_m) {
-                        asm volatile (
-                            "mma.sync.aligned.m16n8k8.row.col.f16.f16.f16.f16 "
-                            "{%0, %1}, "
-                            "{%2, %3}, "
-                            "{%4}, "
-                            "{%5, %6};"
-                            : "=r"(acc_register[mma_m][mma_n][0]), "=r"(acc_register[mma_m][mma_n][1])
-                            : "r"(A_register[mma_m][mma_k][0]), "r"(A_register[mma_m][mma_k][1]),
-                            "r"(B_register[mma_k][mma_n]),
-                            "r"(acc_register[mma_m][mma_n][0]), "r"(acc_register[mma_m][mma_n][1])
-                        );
-                    }
                 }
             }
         }
 
-        __syncthreads();
-
         if (block_k != num_block_tiles_k) {
-            tiled_mem_cpy_swizzle_store<BM, BK, NUM_THREADS, 8, A_reg_size, SWIZZLE_BITS_A>(A_gmem_cache_reg, reinterpret_cast<float4 *>(A_block_smem));
+            A_block_smem += offset_direction * BUFFER_SIZE;
+            B_block_smem += offset_direction * BUFFER_SIZE;
+            offset_direction = -offset_direction;
+
+            tiled_mem_cpy_swizzle_store_a<BM, NUM_THREADS, 8, A_reg_size>(A_gmem_cache_reg, reinterpret_cast<float4 *>(A_block_smem));
             tiled_mem_cpy_swizzle_store<BK, BN, NUM_THREADS, 8, B_reg_size, SWIZZLE_BITS_B>(B_gmem_cache_reg, reinterpret_cast<float4 *>(B_block_smem));
         }
     }
@@ -240,13 +204,13 @@ void launch_matrix_multiplication(const uint32_t M, const uint32_t N, const uint
     constexpr uint32_t THREAD_N = WARPS_PER_BLOCK_N * WARP_SIZE;
     constexpr uint32_t NUM_THREADS = THREAD_M * THREAD_N;
 
-    constexpr uint32_t smem_size = (BM * BK + BN * BK) * sizeof(half);
+    constexpr uint32_t smem_size = 2 * (BM * BK + BN * BK) * sizeof(half);
 
     dim3 grid_dim(BLOCK_N, BLOCK_M);
     dim3 block_dim(THREAD_N, THREAD_M);
 
     CHECK_CUDA_ERROR(cudaFuncSetAttribute(matrix_multiplication<BM, BN, BK, WM, WN, WK, NUM_THREADS>,
-        cudaFuncAttributeMaxDynamicSharedMemorySize,(BM + BN) * BK * sizeof(half)));
+        cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size));
 
     matrix_multiplication<BM, BN, BK, WM, WN, WK, NUM_THREADS>
             <<<grid_dim, block_dim, smem_size, stream>>>(M, N, K, alpha, A, B, beta, C, D);
