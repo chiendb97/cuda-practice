@@ -70,7 +70,7 @@ float measure_performance(std::function<T(cudaStream_t)> bound_function,
 }
 
 void relu_cpu(const float *X, float *Y, size_t n, size_t m) {
-    for (int i = 1; i < n * m; ++i) {
+    for (int i = 0; i < n * m; ++i) {
         Y[i] = max(X[i], 0.0f);
     }
 }
@@ -94,7 +94,7 @@ void launch_relu(const float *d_X, float *d_output, size_t n, size_t m,
                                              reinterpret_cast<float4 *>(d_output), n * m);
 }
 
-bool check_result(float *output, float *target, size_t n, float eps = 1e-2) {
+bool check_result(float *output, float *target, size_t n, float eps = 1e-4) {
     for (int i = 0; i < n; ++i) {
         if (fabs(output[i] - target[i]) > eps) {
             return false;
