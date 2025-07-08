@@ -1,23 +1,4 @@
 add_executable(cuda_core cuda_core.cu)
 add_executable(tensor_core tensor_core.cu)
 
-add_executable(matrix_multiplication_naive optimize/naive.cu)
-target_link_libraries(matrix_multiplication_naive gflags)
-
-add_executable(matrix_multiplication_optimize_1 optimize/optimize_1.cu)
-target_link_libraries(matrix_multiplication_optimize_1 gflags)
-
-add_executable(matrix_multiplication_optimize_2 optimize/optimize_2.cu)
-target_link_libraries(matrix_multiplication_optimize_2 gflags)
-
-add_executable(matrix_multiplication_optimize_3 optimize/optimize_3.cu)
-target_link_libraries(matrix_multiplication_optimize_3 gflags)
-
-add_executable(matrix_multiplication_optimize_4 optimize/optimize_4.cu)
-target_link_libraries(matrix_multiplication_optimize_4 gflags)
-
-add_executable(matrix_multiplication_optimize_5 optimize/optimize_5.cu)
-target_link_libraries(matrix_multiplication_optimize_5 gflags)
-
-add_executable(matrix_multiplication_optimize_6 optimize/optimize_6.cu)
-target_link_libraries(matrix_multiplication_optimize_6 gflags)
+add_subdirectory(ampere)

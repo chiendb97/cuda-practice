@@ -1,6 +1,7 @@
 #pragma once
 #include <random>
 #include <thrust/system/cuda/detail/util.h>
+#include <cublas_v2.h>
 
 #include "params.cuh"
 
@@ -22,6 +23,16 @@ inline void check_last_cuda_error(const char *const file, const int line) {
         std::cerr << "CUDA Runtime Error at: " << file << ":" << line
                 << std::endl;
         std::cerr << cudaGetErrorString(err) << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+}
+
+#define CHECK_CUBLAS_ERROR(val) check_cublas_error((val), #val, __FILE__, __LINE__)
+
+inline void check_cublas_error(cublasStatus_t err, const char *const func, const char *const file, const int line) {
+    if (err != CUBLAS_STATUS_SUCCESS) {
+        std::cerr << "Cuda Runtime Error at: " << file << ":" << line << std::endl;
+        std::cerr << "CUBLAS_STATUS_ERROR " << func << std::endl;
         std::exit(EXIT_FAILURE);
     }
 }

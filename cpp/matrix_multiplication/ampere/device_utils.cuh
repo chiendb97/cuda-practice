@@ -201,7 +201,7 @@ __device__ __forceinline__ uint32_t cvta_to_shared_u32(const void *pointer) {
 
 // the stmatrix ptx instruction works for sm_90 and above
 // this is a workaround
-// this is innefficient, access pattern results in bad coalescing
+// this is inefficient, access pattern results in bad coalescing
 __device__ __forceinline__ void stmatrix_m16n8(
     half *dst,
     half (&reg)[4],
@@ -222,7 +222,7 @@ __device__ __forceinline__ void stmatrix_m16n8(
 
 
 // loads an MMA tile directly from global memory
-// this is innefficient, access pattern results in bad coalescing
+// this is inefficient, access pattern results in bad coalescing
 __device__ __forceinline__ void ldmatrix_m16n8_gmem(
     half *src,
     half (&reg)[4],
