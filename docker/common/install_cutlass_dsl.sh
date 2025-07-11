@@ -2,7 +2,7 @@
 
 set -ex
 
-pip3 install polygraphy==0.49.9
+pip3 install nvidia-cutlass-dsl==4.1.0.dev0
 
 # Clean up pip cache and temporary files
 pip3 cache purge

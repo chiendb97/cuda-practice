@@ -12,8 +12,17 @@ fi
 PARSED_CMAKE_VERSION=$(echo $CMAKE_VERSION | sed 's/\.[0-9]*$//')
 CMAKE_FILE_NAME="cmake-${CMAKE_VERSION}-linux-${ARCH}"
 RELEASE_URL_CMAKE=${GITHUB_URL}/Kitware/CMake/releases/download/v${CMAKE_VERSION}/${CMAKE_FILE_NAME}.tar.gz
-wget --no-verbose ${RELEASE_URL_CMAKE} -P /tmp
+wget --no-verbose --timeout=180 --tries=3 ${RELEASE_URL_CMAKE} -P /tmp
 tar -xf /tmp/${CMAKE_FILE_NAME}.tar.gz -C /usr/local/
 ln -s /usr/local/${CMAKE_FILE_NAME} /usr/local/cmake
 
-echo 'export PATH=$PATH:/usr/local/cmake/bin' >> "${ENV}"
+# Clean up temporary files
+rm -rf /tmp/${CMAKE_FILE_NAME}.tar.gz
+rm -rf /usr/local/${CMAKE_FILE_NAME}/doc
+rm -rf /usr/local/${CMAKE_FILE_NAME}/man
+rm -rf /usr/local/${CMAKE_FILE_NAME}/share/aclocal
+rm -rf /usr/local/${CMAKE_FILE_NAME}/share/bash-completion
+rm -rf /usr/local/${CMAKE_FILE_NAME}/share/emacs
+rm -rf /usr/local/${CMAKE_FILE_NAME}/share/vim
+
+echo 'export PATH=/usr/local/cmake/bin:$PATH' >> "${ENV}"
