@@ -14,7 +14,7 @@ ARG https_proxy
 RUN apt-get update && apt-get install -y --no-install-recommends \
     rapidjson-dev ccache gdb git-lfs tzdata net-tools \
     clang lld llvm libclang-rt-dev libffi-dev libibverbs-dev libnuma1 libnuma-dev \
-    python3-dev python3-pip python-is-python3 wget pigz
+    python3-dev python3-pip python-is-python3 wget pigz libgflags-dev
 
 # Remove previous TRT installation
 # We didn't remove libnvinfer* here because tritonserver depends on the pre-installed libraries.
