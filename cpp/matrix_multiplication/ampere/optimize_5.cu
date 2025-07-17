@@ -2,6 +2,7 @@
 // Created by root on 7/2/25.
 //
 
+#include <functional>
 #include <iostream>
 #include <random>
 #include <ctime>

@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include <random>
 #include <thrust/system/cuda/detail/util.h>
 #include <cublas_v2.h>

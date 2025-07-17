@@ -2,6 +2,7 @@
 // Created by chiendb on 3/4/24.
 //
 
+#include <functional>
 #include <iostream>
 #include <random>
 #include<ctime>
