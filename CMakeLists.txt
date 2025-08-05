@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(CheckLanguage)
@@ -10,8 +10,6 @@ include(cmake/modules/parse_make_options.cmake)
 project(cuda_practice LANGUAGES CXX)
 
 # Build options
-option(BUILD_PYT "Build in PyTorch TorchScript class mode" ON)
-option(BUILD_PYBIND "Build Python bindings" ON)
 option(DISABLE_L1_CACHE "Disable L1 Cache" OFF)
 
 # Find gflags
@@ -221,78 +219,7 @@ if(NOT WIN32 AND NOT DEFINED USE_CXX11_ABI)
     message(STATUS "USE_CXX11_ABI is set by python Torch to ${USE_CXX11_ABI}")
 endif()
 
-if(BUILD_PYT)
-    # Build TORCH_CUDA_ARCH_LIST
-    set(TORCH_CUDA_ARCH_LIST "")
-    foreach(CUDA_ARCH IN LISTS CMAKE_CUDA_ARCHITECTURES)
-        if(CUDA_ARCH MATCHES "^([0-9])([0-9])(-real)*$")
-            set(TORCH_ARCH "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}")
-        elseif(CUDA_ARCH STREQUAL "native")
-            set(TORCH_ARCH "Auto")
-        else()
-            message(FATAL_ERROR "${CUDA_ARCH} is not supported")
-        endif()
-        if(NOT CUDA_ARCH MATCHES "-real$" AND NOT CUDA_ARCH STREQUAL "native")
-            string(APPEND TORCH_ARCH "+PTX")
-        endif()
-        list(APPEND TORCH_CUDA_ARCH_LIST ${TORCH_ARCH})
-    endforeach()
-
-    message(STATUS "TORCH_CUDA_ARCH_LIST: ${TORCH_CUDA_ARCH_LIST}")
-    # ignore values passed from the environment
-    if(DEFINED ENV{TORCH_CUDA_ARCH_LIST})
-        message(
-                WARNING
-                "Ignoring environment variable TORCH_CUDA_ARCH_LIST=$ENV{TORCH_CUDA_ARCH_LIST}"
-        )
-    endif()
-    unset(ENV{TORCH_CUDA_ARCH_LIST})
-
-    find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
-    message(STATUS "Found Python executable at ${Python3_EXECUTABLE}")
-    message(STATUS "Found Python libraries at ${Python3_LIBRARY_DIRS}")
-    link_directories("${Python3_LIBRARY_DIRS}")
-    list(APPEND COMMON_HEADER_DIRS ${Python3_INCLUDE_DIRS})
-
-    execute_process(
-            COMMAND
-            ${Python3_EXECUTABLE} "-c"
-            "from __future__ import print_function; import torch; print(torch.__version__,end='');"
-            RESULT_VARIABLE _PYTHON_SUCCESS
-            OUTPUT_VARIABLE TORCH_VERSION)
-    if(TORCH_VERSION VERSION_LESS "1.5.0")
-        message(FATAL_ERROR "PyTorch >= 1.5.0 is needed for TorchScript mode.")
-    endif()
-
-    execute_process(
-            COMMAND ${Python3_EXECUTABLE} "-c"
-            "from __future__ import print_function; import os; import torch;
-print(os.path.dirname(torch.__file__),end='');"
-            RESULT_VARIABLE _PYTHON_SUCCESS
-            OUTPUT_VARIABLE TORCH_DIR)
-    if(NOT _PYTHON_SUCCESS MATCHES 0)
-        message(FATAL_ERROR "Torch config Error.")
-    endif()
-    list(APPEND CMAKE_PREFIX_PATH ${TORCH_DIR})
-    find_package(Torch REQUIRED)
-
-    message(STATUS "TORCH_CXX_FLAGS: ${TORCH_CXX_FLAGS}")
-    add_compile_options(${TORCH_CXX_FLAGS})
-    add_compile_definitions(TORCH_CUDA=1)
-
-    if(DEFINED USE_CXX11_ABI)
-        parse_make_options(${TORCH_CXX_FLAGS} "TORCH_CXX_FLAGS")
-        if(DEFINED TORCH_CXX_FLAGS__GLIBCXX_USE_CXX11_ABI
-                AND NOT ${TORCH_CXX_FLAGS__GLIBCXX_USE_CXX11_ABI} EQUAL ${USE_CXX11_ABI})
-            message(
-                    WARNING
-                    "The libtorch compilation options _GLIBCXX_USE_CXX11_ABI=${TORCH_CXX_FLAGS__GLIBCXX_USE_CXX11_ABI} "
-                    "found by CMake conflict with the project setting USE_CXX11_ABI=${USE_CXX11_ABI}, and the project "
-                    "setting will be discarded.")
-        endif()
-    endif()
-
-elseif(NOT WIN32)
+if(NOT WIN32)
     if(NOT USE_CXX11_ABI)
         add_compile_options("-D_GLIBCXX_USE_CXX11_ABI=0")
     endif()

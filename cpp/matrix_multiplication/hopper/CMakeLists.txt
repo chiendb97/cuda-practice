@@ -1,0 +1,8 @@
+add_executable(matrix_multiplication_hopper_optimize_1 optimize_1.cu)
+target_link_libraries(matrix_multiplication_hopper_optimize_1 gflags ${CUBLAS_LIB} cudart cuda)
+
+add_executable(matrix_multiplication_hopper_optimize_2 optimize_2.cu)
+target_link_libraries(matrix_multiplication_hopper_optimize_2 gflags ${CUBLAS_LIB} cudart cuda)
+
+add_executable(matrix_multiplication_hopper_optimize_3 optimize_3.cu)
+target_link_libraries(matrix_multiplication_hopper_optimize_3 gflags ${CUBLAS_LIB} cudart cuda)
