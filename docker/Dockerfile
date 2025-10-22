@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=harbor.infra.zalo.services/nvcr_proxy_cache/nvidia/tritonserver
+ARG BASE_IMAGE=nvcr.io/nvidia/tritonserver
 ARG BASE_TAG=25.05-py3
 
 FROM ${BASE_IMAGE}:${BASE_TAG} AS base
