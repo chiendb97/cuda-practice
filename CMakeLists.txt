@@ -9,6 +9,8 @@ include(cmake/modules/parse_make_options.cmake)
 
 project(cuda_practice LANGUAGES CXX)
 
+option(ENABLE_HOPPER "Enable Hopper (SM90+) kernels" OFF)
+
 # Build options
 option(DISABLE_L1_CACHE "Disable L1 Cache" OFF)
 

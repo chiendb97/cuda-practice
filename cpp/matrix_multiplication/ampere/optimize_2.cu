@@ -197,7 +197,7 @@ void launch_matrix_multiplication(const uint32_t M, const uint32_t N, const uint
 
     constexpr uint32_t WARPS_PER_BLOCK_M = 4;
     constexpr uint32_t WARPS_PER_BLOCK_N = 2;
-    constexpr uint32_t WARPS_PER_BLOCK_K = 2;
+    constexpr uint32_t WARPS_PER_BLOCK_K = 4;
 
     constexpr uint32_t WM = BM / WARPS_PER_BLOCK_M;
     constexpr uint32_t WN = BN / WARPS_PER_BLOCK_N;

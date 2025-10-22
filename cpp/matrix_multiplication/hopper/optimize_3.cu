@@ -214,8 +214,8 @@ void launch_matrix_multiplication(const uint32_t M, const uint32_t N, const uint
                                   CUtensorMap *A_tensor_map_device, CUtensorMap *B_tensor_map_device,
                                   cudaStream_t stream)
 {
-    constexpr uint32_t num_consumner_warp_groups = 2;
-    constexpr uint32_t BM = 64 * num_consumner_warp_groups;
+    constexpr uint32_t num_consumer_warp_groups = 2;
+    constexpr uint32_t BM = 64 * num_consumer_warp_groups;
     constexpr uint32_t BN = 256;
     constexpr uint32_t BK = 64;
     constexpr uint32_t BP = 4;
@@ -232,15 +232,15 @@ void launch_matrix_multiplication(const uint32_t M, const uint32_t N, const uint
     constexpr uint32_t NUM_THREADS_PER_WARP_GROUP = 128;
 
     dim3 grid_dim(TILE_M * TILE_N);
-    dim3 block_dim(NUM_THREADS_PER_WARP_GROUP * (num_consumner_warp_groups + 1));
+    dim3 block_dim(NUM_THREADS_PER_WARP_GROUP * (num_consumer_warp_groups + 1));
 
     constexpr uint32_t smem_size = BP * (BM * BK + BN * BK) * sizeof(half);
 
     static_assert(smem_size <= 227000, "sm90 has a max of 227000 bytes of dynamic shared memory");
 
-    CHECK_CUDA_ERROR(cudaFuncSetAttribute(matrix_multiplication<BM, BN, BK, BP, TILE_M, TILE_N, num_consumner_warp_groups>, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size));
+    CHECK_CUDA_ERROR(cudaFuncSetAttribute(matrix_multiplication<BM, BN, BK, BP, TILE_M, TILE_N, num_consumer_warp_groups>, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size));
 
-    matrix_multiplication<BM, BN, BK, BP, TILE_M, TILE_N, num_consumner_warp_groups><<<grid_dim, block_dim, smem_size, stream>>>(M, N, K, alpha, A, B, beta, C, D, A_tensor_map_device, B_tensor_map_device);
+    matrix_multiplication<BM, BN, BK, BP, TILE_M, TILE_N, num_consumer_warp_groups><<<grid_dim, block_dim, smem_size, stream>>>(M, N, K, alpha, A, B, beta, C, D, A_tensor_map_device, B_tensor_map_device);
 }
 
 int main(int argc, char *argv[])

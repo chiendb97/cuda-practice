@@ -21,3 +21,6 @@ target_link_libraries(matrix_multiplication_ampere_optimize_5 gflags)
 
 add_executable(matrix_multiplication_ampere_optimize_6 optimize_6.cu)
 target_link_libraries(matrix_multiplication_ampere_optimize_6 gflags)
+
+add_executable(matrix_multiplication_ampere_optimize_7 optimize_7.cu)
+target_link_libraries(matrix_multiplication_ampere_optimize_7 gflags)

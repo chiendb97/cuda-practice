@@ -29,6 +29,7 @@ matrix_multiplication(const uint32_t M, const uint32_t N, const uint32_t K,
                       const float alpha, half *A, half *B, const float beta, half *C, half *D) {
     constexpr uint32_t MMA_M = 16;
     constexpr uint32_t MMA_N = 8;
+    constexpr uint32_t MMA_K = 8;
 
     const uint32_t A_stride = K;
     const uint32_t B_stride = N;
@@ -39,7 +40,7 @@ matrix_multiplication(const uint32_t M, const uint32_t N, const uint32_t K,
 
     constexpr uint32_t mma_tiles_per_warp_m = WM / MMA_M;
     constexpr uint32_t mma_tiles_per_warp_n = WN / MMA_N;
-    constexpr uint32_t mma_tiles_per_warp_k = 4;
+    constexpr uint32_t mma_tiles_per_warp_k = WK / MMA_K;
 
     const uint32_t num_block_tiles_k = K / BK;
 
@@ -190,7 +191,7 @@ void launch_matrix_multiplication(const uint32_t M, const uint32_t N, const uint
 
     constexpr uint32_t WARPS_PER_BLOCK_M = 2;
     constexpr uint32_t WARPS_PER_BLOCK_N = 4;
-    constexpr uint32_t WARPS_PER_BLOCK_K = 4;
+    constexpr uint32_t WARPS_PER_BLOCK_K = 1;
 
     constexpr uint32_t WM = BM / WARPS_PER_BLOCK_M;
     constexpr uint32_t WN = BN / WARPS_PER_BLOCK_N;
