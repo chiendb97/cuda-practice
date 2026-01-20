@@ -1,5 +1,5 @@
 ARG BASE_IMAGE=nvcr.io/nvidia/tritonserver
-ARG BASE_TAG=25.05-py3
+ARG BASE_TAG=25.10-py3
 
 FROM ${BASE_IMAGE}:${BASE_TAG} AS base
 
@@ -72,16 +72,20 @@ COPY docker/common/install_cutlass_dsl.sh /tmp/
 RUN bash /tmp/install_cutlass_dsl.sh && \
     rm -f /tmp/install_cutlass_dsl.sh
 
-# Install requirements
-COPY docker/common/requirements.txt /tmp/
-RUN pip3 install -r /tmp/requirements.txt --extra-index-url https://pypi.ngc.nvidia.com && \
-    rm -f /tmp/requirements.txt
+COPY docker/common/install_triton_lang.sh /tmp/
+RUN bash /tmp/install_triton_lang.sh && \
+    rm -f /tmp/install_triton_lang.sh
+
+## Install requirements
+#COPY docker/common/requirements.txt /tmp/
+#RUN pip3 install -r /tmp/requirements.txt --extra-index-url https://pypi.ngc.nvidia.com && \
+#    rm -f /tmp/requirements.txt
 
 FROM dev as vscode_server_builder
 
-RUN wget https://github.com/coder/code-server/releases/download/v4.101.2/code-server_4.101.2_amd64.deb && \
-    dpkg -i code-server_4.101.2_amd64.deb && \
-    rm -f code-server_4.101.2_amd64.deb
+RUN wget https://github.com/coder/code-server/releases/download/v4.105.1/code-server_4.105.1_amd64.deb && \
+    dpkg -i code-server_4.105.1_amd64.deb && \
+    rm -f code-server_4.105.1_amd64.deb
 
 # Install vscode extension ms-python.python
 # Install vscode extension cpptools
