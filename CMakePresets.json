@@ -211,6 +211,62 @@
             }
         },
         {
+            "name": "unixlike-gcc-debug-sm80",
+            "displayName": "gcc Debug (Ampere sm80)",
+            "description": "Target Unix-like OS with the gcc compiler, debug build type, Ampere architecture",
+            "inherits": "conf-unixlike-common",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_CXX_COMPILER": "g++",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_CUDA_COMPILER": "/usr/local/cuda/bin/nvcc",
+                "CMAKE_CUDA_ARCHITECTURES": "80",
+                "CMAKE_CUDA_FLAGS": "--generate-code=arch=compute_80,code=[sm_80]"
+            }
+        },
+        {
+            "name": "unixlike-gcc-release-sm80",
+            "displayName": "gcc Release (Ampere sm80)",
+            "description": "Target Unix-like OS with the gcc compiler, release build type, Ampere architecture",
+            "inherits": "conf-unixlike-common",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_CXX_COMPILER": "g++",
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "CMAKE_CUDA_COMPILER": "/usr/local/cuda/bin/nvcc",
+                "CMAKE_CUDA_ARCHITECTURES": "80",
+                "CMAKE_CUDA_FLAGS": "--generate-code=arch=compute_80,code=[sm_80]"
+            }
+        },
+        {
+            "name": "unixlike-clang-debug-sm80",
+            "displayName": "clang Debug (Ampere sm80)",
+            "description": "Target Unix-like OS with the clang compiler, debug build type, Ampere architecture",
+            "inherits": "conf-unixlike-common",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_CUDA_COMPILER": "/usr/local/cuda/bin/nvcc",
+                "CMAKE_CUDA_ARCHITECTURES": "80",
+                "CMAKE_CUDA_FLAGS": "--generate-code=arch=compute_80,code=[sm_80]"
+            }
+        },
+        {
+            "name": "unixlike-clang-release-sm80",
+            "displayName": "clang Release (Ampere sm80)",
+            "description": "Target Unix-like OS with the clang compiler, release build type, Ampere architecture",
+            "inherits": "conf-unixlike-common",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "CMAKE_CUDA_COMPILER": "/usr/local/cuda/bin/nvcc",
+                "CMAKE_CUDA_ARCHITECTURES": "80",
+                "CMAKE_CUDA_FLAGS": "--generate-code=arch=compute_80,code=[sm_80]"
+            }
+        },
+        {
             "name": "Custom configure preset",
             "displayName": "Custom configure preset",
             "description": "Sets Ninja generator, build and install directory",
@@ -290,6 +346,34 @@
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "unixlike-clang-release"
+        },
+        {
+            "name": "test-unixlike-gcc-debug-sm80",
+            "displayName": "Strict (Ampere sm80)",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "unixlike-gcc-debug-sm80"
+        },
+        {
+            "name": "test-unixlike-gcc-release-sm80",
+            "displayName": "Strict (Ampere sm80)",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "unixlike-gcc-release-sm80"
+        },
+        {
+            "name": "test-unixlike-clang-debug-sm80",
+            "displayName": "Strict (Ampere sm80)",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "unixlike-clang-debug-sm80"
+        },
+        {
+            "name": "test-unixlike-clang-release-sm80",
+            "displayName": "Strict (Ampere sm80)",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "unixlike-clang-release-sm80"
         }
     ]
 }
