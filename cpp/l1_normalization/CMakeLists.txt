@@ -1,0 +1,4 @@
+add_executable(l1_normalization_baseline baseline.cu)
+target_link_libraries(l1_normalization_baseline gflags)
+add_executable(l1_normalization_optimize optimize.cu)
+target_link_libraries(l1_normalization_optimize gflags)
