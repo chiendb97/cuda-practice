@@ -1,33 +1,11 @@
-//
-// Created by chiendb on 3/4/24.
-//
-
-#include <iostream>
-#include <cstdio>
-#include <gflags/gflags.h>
-
-DEFINE_int32(nx, 128, "Number of blocks in x direction");
-DEFINE_int32(ny, 64, "Number of blocks in y direction");
-DEFINE_int32(block_x, 8, "Number of threads in x direction");
-DEFINE_int32(block_y, 4, "Number of threads in y direction");
+#include "../cuda_common.cuh"
 
 __global__ void hello_cuda() {
     printf("Hello CUDA world, %d %d %d %d\n", blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y);
 }
 
-
-int main(int argc, char* argv[]) {
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
-
-    int nx = FLAGS_nx;
-    int ny = FLAGS_ny;
-
-    dim3 block(FLAGS_block_x, FLAGS_block_y);
-    dim3 grid(FLAGS_nx / FLAGS_block_x, FLAGS_ny / FLAGS_block_y);
-
-    hello_cuda<<<grid, block>>>();
-
-    cudaDeviceSynchronize();
-    cudaDeviceReset();
-    return 0;
+void launch_hello_cuda(int nx, int ny, int block_x, int block_y, cudaStream_t stream) {
+    dim3 block(block_x, block_y);
+    dim3 grid(nx / block_x, ny / block_y);
+    hello_cuda<<<grid, block, 0, stream>>>();
 }

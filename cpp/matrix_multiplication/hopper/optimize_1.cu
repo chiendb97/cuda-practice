@@ -2,30 +2,15 @@
 // Created by root on 7/15/25.
 //
 
-#include <functional>
-#include <iostream>
-#include <random>
-#include <ctime>
 #include <cuda.h>
 #include <cuda/barrier>
 #include <mma.h>
 #include <cudaTypedefs.h>
 #include <cuda_fp16.h>
 #include <cuda_bf16.h>
-#include <gflags/gflags.h>
 
 #include "device_utils.cuh"
-#include "host_utils.cuh"
-
-DEFINE_uint32(M, 512, "M");
-DEFINE_uint32(N, 512, "N");
-DEFINE_uint32(K, 512, "K");
-DEFINE_double(alpha, 1.0, "alpha");
-DEFINE_double(beta, 0.0, "beta");
-
-DEFINE_bool(test, false, "test");
-DEFINE_uint32(num_warmups, 0, "num_warmups");
-DEFINE_uint32(num_repeats, 1, "num_repeats");
+#include "../../cuda_common.cuh"
 
 template <uint32_t BM, uint32_t BN, uint32_t BK>
 __global__ void
@@ -128,7 +113,7 @@ matrix_multiplication(const uint32_t M, const uint32_t N, const uint32_t K,
 #undef OUT_IDX
 }
 
-void launch_matrix_multiplication(const uint32_t M, const uint32_t N, const uint32_t K,
+void launch_matmul_hopper_opt1(const uint32_t M, const uint32_t N, const uint32_t K,
                                   const float alpha, half *A, half *B, const float beta, half *C, half *D,
                                   CUtensorMap *A_tensor_map_device, CUtensorMap *B_tensor_map_device,
                                   cudaStream_t stream)
@@ -154,70 +139,4 @@ void launch_matrix_multiplication(const uint32_t M, const uint32_t N, const uint
     CHECK_CUDA_ERROR(cudaFuncSetAttribute(matrix_multiplication<BM, BN, BK>, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size));
 
     matrix_multiplication<BM, BN, BK><<<grid_dim, block_dim, smem_size, stream>>>(M, N, K, alpha, A, B, beta, C, D, A_tensor_map_device, B_tensor_map_device);
-}
-
-int main(int argc, char *argv[])
-{
-    cudaSetDevice(0);
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
-    uint32_t M = FLAGS_M;
-    uint32_t N = FLAGS_N;
-    uint32_t K = FLAGS_K;
-    auto alpha = static_cast<float>(FLAGS_alpha);
-    auto beta = static_cast<float>(FLAGS_beta);
-
-    bool test = FLAGS_test;
-    uint32_t num_warmups = FLAGS_num_warmups;
-    uint32_t num_repeats = FLAGS_num_repeats;
-
-    cudaStream_t stream;
-    CHECK_CUDA_ERROR(cudaStreamCreate(&stream));
-
-    auto [host_params, device_params] = setup_params<half>(M, N, K, alpha, beta);
-
-    CUtensorMap *A_tensor_map_device = nullptr;
-    CUtensorMap *B_tensor_map_device = nullptr;
-
-    CHECK_CUDA_ERROR(cudaMalloc(&A_tensor_map_device, sizeof(CUtensorMap)));
-    CHECK_CUDA_ERROR(cudaMalloc(&B_tensor_map_device, sizeof(CUtensorMap)));
-
-    std::function<void(cudaStream_t)> bound_function_matrix_multiplication{
-        std::bind(launch_matrix_multiplication, device_params.M, device_params.N, device_params.K,
-                  device_params.alpha, device_params.A, device_params.B,
-                  device_params.beta, device_params.C, device_params.D,
-                  A_tensor_map_device, B_tensor_map_device, stream)};
-
-    float const latency_gpu{
-        measure_performance(bound_function_matrix_multiplication, stream, num_repeats, num_warmups)};
-
-    std::cout << "Latency for matrix multiplication on GPU: " << latency_gpu << std::endl;
-
-    cudaDeviceSynchronize();
-    CHECK_CUDA_ERROR(cudaStreamDestroy(stream));
-
-    if (test)
-    {
-        std::clock_t time_start = std::clock();
-        matrix_multiplication_cpu(host_params.M, host_params.N, host_params.K,
-                                  host_params.alpha, host_params.A, host_params.B,
-                                  host_params.beta, host_params.C, host_params.D);
-        std::clock_t time_end = std::clock();
-
-        double latency_cpu = (double)(time_end - time_start) / CLOCKS_PER_SEC * 1000;
-        std::cout << "Latency for matrix multiplication on CPU: " << latency_cpu << std::endl;
-
-        if (check_result(device_params.C, host_params.D, M, N, 1e-4))
-        {
-            std::cout << "Result is correct" << std::endl;
-        }
-        else
-        {
-            std::cout << "Result is incorrect" << std::endl;
-        }
-    }
-
-    free_params(host_params, device_params);
-    CHECK_CUDA_ERROR(cudaFree(A_tensor_map_device));
-    CHECK_CUDA_ERROR(cudaFree(B_tensor_map_device));
-    return 0;
 }
